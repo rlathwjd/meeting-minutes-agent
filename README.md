@@ -1,8 +1,7 @@
 # 회의록 자동 작성 웹 애플리케이션
 
-회의록 양식과 녹취 파일을 기반으로 회의록 작성을 준비하는 React + TypeScript 프론트엔드와 FastAPI 백엔드 기반 시스템
+회의록 양식과 녹취 텍스트 파일을 기반으로 회의록을 작성하는 시스템
 
-현재 단계에서는 기본 UI, 데이터 모델, API 구조를 우선 구현했으며 OpenAI API 호출 및 Word 문서 생성 기능은 아직 포함하지 않았습니다.
 
 ## 1. 주요 기능
 
@@ -14,19 +13,20 @@
 
 ## 2. 기술 스택
 
-### 프론트엔드
+### Backend
+
+- Python
+- FastAPI
+- Pydantic
+- Uvicorn
+
+### Frontend
 
 - React
 - TypeScript
 - Vite
 - lucide-react
 
-### 백엔드
-
-- Python
-- FastAPI
-- Pydantic
-- Uvicorn
 
 ### 데이터 저장
 
@@ -35,14 +35,14 @@
 
 ## 4. 로컬 개발 및 테스트
 
-### 백엔드 실행
+### Backend
 
 ```bash
 cd backend
 .venv/Scripts/python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-### 프론트엔드 실행
+### Frontend
 
 ```bash
 cd frontend
