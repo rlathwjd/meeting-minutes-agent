@@ -1,0 +1,49 @@
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+backend/.venv/
+
+# uv
+.uv-cache/
+uv.lock
+
+# Node / frontend
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+*.tsbuildinfo
+
+# Logs
+*.log
+backend/*.log
+frontend/*.log
+
+# Local uploaded/generated data
+backend/data/*.json
+backend/data/templates/*
+backend/data/transcripts/*
+!backend/data/templates/.gitkeep
+!backend/data/transcripts/.gitkeep
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

@@ -1,0 +1,313 @@
+:root {
+  color: #1f2933;
+  font-family:
+    Inter, "Pretendard", "Noto Sans KR", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #f4f6f8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  min-height: 100vh;
+}
+
+.sidebar {
+  background: #16213a;
+  color: #f8fafc;
+  padding: 28px 20px;
+}
+
+.brand {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 36px;
+}
+
+.brand strong,
+.brand span {
+  display: block;
+}
+
+.brand span {
+  color: #a8b3c7;
+  font-size: 13px;
+  margin-top: 2px;
+}
+
+nav {
+  display: grid;
+  gap: 8px;
+}
+
+nav button {
+  border: 0;
+  color: #dce5f2;
+  background: transparent;
+  border-radius: 8px;
+  padding: 12px 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+nav button.active,
+nav button:hover {
+  background: #243656;
+  color: #ffffff;
+}
+
+main {
+  padding: 32px;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 20px;
+}
+
+h1,
+h2,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  font-size: 28px;
+  margin-bottom: 6px;
+}
+
+h2 {
+  font-size: 18px;
+  margin-bottom: 18px;
+}
+
+.topbar p {
+  color: #697386;
+  margin-bottom: 0;
+}
+
+.notice {
+  background: #e9f7ef;
+  border: 1px solid #b8e4ca;
+  border-radius: 8px;
+  color: #1f6b3b;
+  margin-bottom: 18px;
+  padding: 12px 14px;
+}
+
+.workspace {
+  display: grid;
+  gap: 18px;
+}
+
+.two-column {
+  grid-template-columns: 380px minmax(0, 1fr);
+  align-items: start;
+}
+
+.panel {
+  background: #ffffff;
+  border: 1px solid #d9e1ea;
+  border-radius: 8px;
+  padding: 22px;
+}
+
+.panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+label {
+  color: #3c4656;
+  display: grid;
+  gap: 7px;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+input,
+select,
+textarea {
+  border: 1px solid #cfd8e3;
+  border-radius: 7px;
+  color: #1f2933;
+  min-height: 42px;
+  padding: 10px 12px;
+  width: 100%;
+}
+
+textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+legend {
+  color: #3c4656;
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.segmented {
+  background: #edf1f5;
+  border-radius: 8px;
+  display: inline-grid;
+  grid-auto-flow: column;
+  gap: 4px;
+  padding: 4px;
+}
+
+.segmented button {
+  border: 0;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  min-width: 96px;
+  padding: 9px 14px;
+}
+
+.segmented button.selected {
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(31, 41, 51, 0.14);
+  color: #0f5b8f;
+  font-weight: 700;
+}
+
+.attendee-list {
+  display: grid;
+  gap: 10px;
+}
+
+.attendee-row {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 10px;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.primary {
+  align-items: center;
+  background: #0f6b99;
+  border: 0;
+  border-radius: 8px;
+  color: #ffffff;
+  cursor: pointer;
+  display: inline-flex;
+  gap: 8px;
+  justify-content: center;
+  min-height: 42px;
+  padding: 10px 16px;
+}
+
+.primary:hover {
+  background: #0b587e;
+}
+
+.icon-button {
+  align-items: center;
+  background: #eef3f8;
+  border: 1px solid #d6e0ea;
+  border-radius: 7px;
+  color: #1f2933;
+  cursor: pointer;
+  display: inline-flex;
+  height: 38px;
+  justify-content: center;
+  text-decoration: none;
+  width: 38px;
+}
+
+.icon-button.danger {
+  color: #b42318;
+}
+
+.template-list {
+  display: grid;
+  gap: 12px;
+}
+
+.template-card {
+  align-items: center;
+  border: 1px solid #dbe3ec;
+  border-radius: 8px;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  padding: 16px;
+}
+
+.template-card p {
+  color: #5f6f84;
+  margin: 6px 0;
+}
+
+.template-card span,
+.empty {
+  color: #697386;
+  font-size: 14px;
+}
+
+.card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+@media (max-width: 860px) {
+  .app-shell,
+  .two-column {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    padding: 18px;
+  }
+
+  .brand {
+    margin-bottom: 16px;
+  }
+
+  main {
+    padding: 20px;
+  }
+
+  .form-grid,
+  .attendee-row {
+    grid-template-columns: 1fr;
+  }
+}
