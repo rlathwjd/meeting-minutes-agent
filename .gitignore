@@ -39,6 +39,7 @@ frontend/*.log
 backend/data/*.json
 backend/data/templates/*
 backend/data/transcripts/*
+backend/data/generated/*
 !backend/data/templates/.gitkeep
 !backend/data/transcripts/.gitkeep
 

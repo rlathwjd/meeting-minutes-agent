@@ -29,6 +29,20 @@ class Template(TemplateBase):
     created_at: datetime
 
 
+class ProjectBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    description: Optional[str] = Field(default="", max_length=1000)
+    template_ids: List[str] = Field(default_factory=list)
+    locations: List[str] = Field(default_factory=list)
+    companies: List[str] = Field(default_factory=list)
+    attendees: List[str] = Field(default_factory=list)
+
+
+class Project(ProjectBase):
+    id: str
+    created_at: datetime
+
+
 class CompanyAttendees(BaseModel):
     company: str = Field(..., min_length=1, max_length=100)
     attendees: List[str] = Field(default_factory=list)
@@ -39,6 +53,7 @@ class MinutesDraftCreate(BaseModel):
     transcript_filename: str
     meeting_datetime: datetime
     location: str = Field(..., min_length=1, max_length=200)
+    author: str = Field(..., min_length=1, max_length=100)
     meeting_type: MeetingType
     attendees_by_company: List[CompanyAttendees] = Field(default_factory=list)
     title_mode: TitleMode

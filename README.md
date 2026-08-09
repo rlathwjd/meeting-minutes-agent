@@ -33,19 +33,37 @@
 - 로컬 JSON 파일
 - 업로드 파일 로컬 저장
 
+## 3. 환경 변수 설정
+
+```env
+OPENAI_API_KEY=api_key
+```
+
+LLM 생성 모델은 기본적으로 `gpt-4o-mini`를 사용합니다.
+
 ## 4. 로컬 개발 및 테스트
 
-### Backend
+### 백엔드 실행
 
 ```bash
 cd backend
-.venv/Scripts/python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+python -m venv .venv
+.venv/Scripts/activate
+python -m pip install -r requirements.txt
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-### Frontend
+### 프론트엔드 실행
 
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
+
+## 5. 향후 구현 예정
+
+- 사이트 내에서 생성된 회의록 문서 관리(DB 연동)
+- 생성된 회의록 미리보기
+- 사용자 인증 및 권한 관리
+- 배포 환경 구성
