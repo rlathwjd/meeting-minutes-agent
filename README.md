@@ -35,24 +35,17 @@
 - SQLAlchemy + 로컬 SQLite
 - 기본 DB 파일: `backend/data/meeting_minutes.db`
 
-## 3. 환경 변수 설정
-
-```env
-# .env.example을 .env로 복사한 뒤 필요한 값을 채웁니다.
-OPENAI_API_KEY=api_key
-DATABASE_URL=
-```
-
-`DATABASE_URL`을 비워두면 로컬 SQLite DB(`backend/data/meeting_minutes.db`)를 사용합니다.
-
-
 ### 백엔드
 
 ```powershell
 cd backend
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-if (!(Test-Path ..\.env)) { Copy-Item ..\.env.example ..\.env }
+Copy-Item ..\.env.example ..\.env
+------------------------------------------------
+OPENAI_API_KEY=api_key
+DATABASE_URL=
+------------------------------------------------
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
@@ -63,8 +56,6 @@ cd frontend
 npm install
 npm run dev
 ```
-
-프론트엔드는 기본으로 `http://127.0.0.1:8000` API 서버에 연결합니다. 다른 주소를 사용할 때는 `frontend/.env.example`을 `frontend/.env`로 복사한 뒤 `VITE_API_BASE_URL`을 수정합니다.
 
 ### API 경로
 
