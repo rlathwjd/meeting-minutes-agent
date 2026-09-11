@@ -12,12 +12,14 @@ const GENERATION_STEPS = [
   "Word 파일을 준비하고 있습니다.",
 ];
 
-type View = "compose" | "templates" | "projects";
+type View = "compose" | "result" | "templates" | "projects";
 type MeetingType = "in_person" | "remote";
 type TitleMode = "ai" | "manual";
 type Meridiem = "AM" | "PM";
 
 type Template = {
+  project_id: string;
+  template_data: { file?: { original_filename: string; size: number } };
   id: string;
   name: string;
   description: string;
@@ -58,11 +60,33 @@ type Toast = {
   message: string;
 };
 
+type SavedMinute = {
+  id: string; project_id: string; template_id: string | null; title: string;
+  meeting_at: string | null; status: string;
+  content: { input?: Record<string, any>; transcript_text?: string; minutes?: Record<string, unknown>;
+    document?: { filename: string; preview_url: string } };
+};
+const MINUTE_STATUS = { DRAFT: "draft", COMPLETED: "completed" } as const;
+async function api<T>(path: string, options?: RequestInit): Promise<T> {
+  const response = await fetch(API_BASE + path, options);
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(typeof body?.detail === "string" ? body.detail : "요청을 처리하지 못했습니다.");
+  }
+  return response.status === 204 ? undefined as T : response.json();
+}
 function App() {
+  const [savedMinutes, setSavedMinutes] = React.useState<SavedMinute[]>([]);
+  const [editingMinuteId, setEditingMinuteId] = React.useState<string | null>(null);
+  const [storedTranscript, setStoredTranscript] = React.useState("");
+  const [isSaving, setIsSaving] = React.useState(false);
+  const mainRef = React.useRef<HTMLElement | null>(null);
   const [view, setView] = React.useState<View>("compose");
   const [templates, setTemplates] = React.useState<Template[]>([]);
   const [projects, setProjects] = React.useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = React.useState("");
+  const activeProjectId = React.useRef(selectedProjectId);
+  activeProjectId.current = selectedProjectId;
   const [templateName, setTemplateName] = React.useState("");
   const [templateDescription, setTemplateDescription] = React.useState("");
   const [templateFile, setTemplateFile] = React.useState<File | null>(null);
@@ -99,27 +123,41 @@ function App() {
   }
 
   const loadTemplates = React.useCallback(async () => {
-    const response = await fetch(`${API_BASE}/api/templates`);
-    if (!response.ok) {
-      throw new Error("양식 목록을 불러오지 못했습니다.");
-    }
-    const data = (await response.json()) as Template[];
-    setTemplates(data);
-  }, []);
+    if (!selectedProjectId) { setTemplates([]); return; }
+    const data = await api<Template[]>(`/api/v1/projects/${selectedProjectId}/meeting-templates`);
+    if (activeProjectId.current !== selectedProjectId) return;
+    setTemplates(data.map(item => ({ ...item, original_filename: item.template_data.file?.original_filename || "JSON 양식", size: item.template_data.file?.size || 0 })));
+  }, [selectedProjectId]);
 
   const loadProjects = React.useCallback(async () => {
-    const response = await fetch(`${API_BASE}/api/projects`);
-    if (!response.ok) {
-      throw new Error("프로젝트 목록을 불러오지 못했습니다.");
-    }
-    const data = (await response.json()) as Project[];
+    const data = await api<Project[]>("/api/v1/projects");
     setProjects(data);
+    setSelectedProjectId(current => data.some(item => item.id === current) ? current : data[0]?.id || "");
   }, []);
 
+  const loadMinutes = React.useCallback(async () => {
+    if (!selectedProjectId) { setSavedMinutes([]); return; }
+    const data = await api<SavedMinute[]>(`/api/v1/projects/${selectedProjectId}/meeting-minutes`);
+    if (activeProjectId.current === selectedProjectId) setSavedMinutes(data);
+  }, [selectedProjectId]);
+
+  React.useEffect(() => { loadProjects().catch(error => showToast(error.message)); }, [loadProjects]);
   React.useEffect(() => {
-    loadTemplates().catch((error: Error) => showToast(error.message));
-    loadProjects().catch((error: Error) => showToast(error.message));
-  }, [loadProjects, loadTemplates]);
+    setTemplates([]);
+    setSavedMinutes([]);
+    setEditingMinuteId(null);
+    setSelectedTemplateId("");
+    setTranscriptFile(null);
+    setStoredTranscript("");
+    setManualTitle("");
+    setMeetingDatetime("");
+    setLocation("");
+    setAuthor("");
+    setAttendees([{ company: "", attendeesText: "" }]);
+    resetTemplateForm();
+    loadTemplates().catch(error => showToast(error.message));
+    loadMinutes().catch(error => showToast(error.message));
+  }, [loadTemplates, loadMinutes]);
 
   React.useEffect(() => {
     if (!toast) {
@@ -151,56 +189,64 @@ function App() {
   }, [generatedMinutes?.url]);
 
   async function uploadTemplate(event: React.FormEvent) {
-    event.preventDefault();
-    if (!templateName || !templateFile) {
-      showToast("양식명과 파일을 입력하세요.", "templates");
-      return;
+    try {
+      event.preventDefault();
+      if (!templateName || !templateFile) {
+        showToast("양식명과 파일을 입력하세요.", "templates");
+        return;
+      }
+
+      const form = new FormData();
+      form.append("name", templateName);
+      form.append("description", templateDescription);
+      form.append("file", templateFile);
+
+      const response = await fetch(`${API_BASE}/api/v1/projects/${selectedProjectId}/meeting-templates/upload`, { method: "POST", body: form });
+      if (!response.ok) {
+        showToast("양식 업로드에 실패했습니다.", "templates");
+        return;
+      }
+
+      setTemplateName("");
+      setTemplateDescription("");
+      setTemplateFile(null);
+      showToast("양식이 등록되었습니다.", "templates");
+      await loadTemplates();
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "요청을 처리하지 못했습니다.", "templates");
     }
-
-    const form = new FormData();
-    form.append("name", templateName);
-    form.append("description", templateDescription);
-    form.append("file", templateFile);
-
-    const response = await fetch(`${API_BASE}/api/templates`, { method: "POST", body: form });
-    if (!response.ok) {
-      showToast("양식 업로드에 실패했습니다.", "templates");
-      return;
-    }
-
-    setTemplateName("");
-    setTemplateDescription("");
-    setTemplateFile(null);
-    showToast("양식이 등록되었습니다.", "templates");
-    await loadTemplates();
   }
 
   async function saveTemplate(event: React.FormEvent) {
-    event.preventDefault();
-    if (!templateName || (!editingTemplateId && !templateFile)) {
-      showToast(editingTemplateId ? "양식명을 입력하세요." : "양식명과 파일을 입력하세요.", "templates");
-      return;
-    }
+    try {
+      event.preventDefault();
+      if (!selectedProjectId || !templateName || (!editingTemplateId && !templateFile)) {
+        showToast(editingTemplateId ? "양식명을 입력하세요." : "양식명과 파일을 입력하세요.", "templates");
+        return;
+      }
 
-    const form = new FormData();
-    form.append("name", templateName);
-    form.append("description", templateDescription);
-    if (templateFile) {
-      form.append("file", templateFile);
-    }
+      const form = new FormData();
+      form.append("name", templateName);
+      form.append("description", templateDescription);
+      if (templateFile) {
+        form.append("file", templateFile);
+      }
 
-    const response = await fetch(`${API_BASE}/api/templates${editingTemplateId ? `/${editingTemplateId}` : ""}`, {
-      method: editingTemplateId ? "PUT" : "POST",
-      body: form,
-    });
-    if (!response.ok) {
-      showToast(editingTemplateId ? "양식 수정에 실패했습니다." : "양식 업로드에 실패했습니다.", "templates");
-      return;
-    }
+      const response = await fetch(`${API_BASE}/api/v1/${editingTemplateId ? `meeting-templates/${editingTemplateId}/upload` : `projects/${selectedProjectId}/meeting-templates/upload`}`, {
+        method: editingTemplateId ? "PATCH" : "POST",
+        body: form,
+      });
+      if (!response.ok) {
+        showToast(editingTemplateId ? "양식 수정에 실패했습니다." : "양식 업로드에 실패했습니다.", "templates");
+        return;
+      }
 
-    showToast(editingTemplateId ? "양식이 수정되었습니다." : "양식이 등록되었습니다.", "templates");
-    resetTemplateForm();
-    await loadTemplates();
+      showToast(editingTemplateId ? "양식이 수정되었습니다." : "양식이 등록되었습니다.", "templates");
+      resetTemplateForm();
+      await loadTemplates();
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "요청을 처리하지 못했습니다.", "templates");
+    }
   }
 
   function editTemplate(template: Template) {
@@ -218,40 +264,48 @@ function App() {
   }
 
   async function updateTemplate(templateId: string, name: string, description: string, file: File | null) {
-    if (!name.trim()) {
-      showToast("양식명을 입력하세요.", "templates");
-      return;
-    }
+    try {
+      if (!name.trim()) {
+        showToast("양식명을 입력하세요.", "templates");
+        return;
+      }
 
-    const form = new FormData();
-    form.append("name", name.trim());
-    form.append("description", description.trim());
-    if (file) {
-      form.append("file", file);
-    }
+      const form = new FormData();
+      form.append("name", name.trim());
+      form.append("description", description.trim());
+      if (file) {
+        form.append("file", file);
+      }
 
-    const response = await fetch(`${API_BASE}/api/templates/${templateId}`, { method: "PUT", body: form });
-    if (!response.ok) {
-      showToast("양식 수정에 실패했습니다.", "templates");
-      return;
-    }
+      const response = await fetch(`${API_BASE}/api/v1/meeting-templates/${templateId}/upload`, { method: "PATCH", body: form });
+      if (!response.ok) {
+        showToast("양식 수정에 실패했습니다.", "templates");
+        return;
+      }
 
-    showToast("양식이 수정되었습니다.", "templates");
-    await loadTemplates();
+      showToast("양식이 수정되었습니다.", "templates");
+      await loadTemplates();
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "요청을 처리하지 못했습니다.", "templates");
+    }
   }
 
   async function deleteTemplate(templateId: string) {
-    if (!window.confirm("이 회의록 양식을 삭제할까요?")) {
-      return;
-    }
+    try {
+      if (!window.confirm("이 회의록 양식을 삭제할까요?")) {
+        return;
+      }
 
-    const response = await fetch(`${API_BASE}/api/templates/${templateId}`, { method: "DELETE" });
-    if (!response.ok) {
-      showToast("양식을 삭제하지 못했습니다.", "templates");
-      return;
+      const response = await fetch(`${API_BASE}/api/v1/meeting-templates/${templateId}`, { method: "DELETE" });
+      if (!response.ok) {
+        showToast("양식을 삭제하지 못했습니다.", "templates");
+        return;
+      }
+      showToast("양식이 삭제되었습니다.", "templates");
+      await loadTemplates();
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "요청을 처리하지 못했습니다.", "templates");
     }
-    showToast("양식이 삭제되었습니다.", "templates");
-    await loadTemplates();
   }
 
   function resetProjectForm() {
@@ -287,69 +341,78 @@ function App() {
   }
 
   async function saveProject(event: React.FormEvent) {
-    event.preventDefault();
-    if (!projectName.trim()) {
-      showToast("프로젝트명을 입력하세요.", "projects");
-      return;
+    try {
+      event.preventDefault();
+      if (!projectName.trim()) {
+        showToast("프로젝트명을 입력하세요.", "projects");
+        return;
+      }
+
+      const payload = {
+        name: projectName.trim(),
+        description: projectDescription.trim(),
+        locations: projectLocations,
+        companies: projectCompanies,
+        attendees: projectAttendees,
+      };
+
+      const response = await fetch(`${API_BASE}/api/v1/projects${editingProjectId ? `/${editingProjectId}` : ""}`, {
+        method: editingProjectId ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        showToast("프로젝트를 저장하지 못했습니다.", "projects");
+        return;
+      }
+
+      showToast(editingProjectId ? "프로젝트를 수정했습니다." : "프로젝트를 등록했습니다.", "projects");
+      resetProjectForm();
+      await loadProjects();
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "요청을 처리하지 못했습니다.", "projects");
     }
-
-    const payload = {
-      name: projectName.trim(),
-      description: projectDescription.trim(),
-      template_ids: projectTemplateIds,
-      locations: projectLocations,
-      companies: projectCompanies,
-      attendees: projectAttendees,
-    };
-
-    const response = await fetch(`${API_BASE}/api/projects${editingProjectId ? `/${editingProjectId}` : ""}`, {
-      method: editingProjectId ? "PUT" : "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (!response.ok) {
-      showToast("프로젝트를 저장하지 못했습니다.", "projects");
-      return;
-    }
-
-    showToast(editingProjectId ? "프로젝트를 수정했습니다." : "프로젝트를 등록했습니다.", "projects");
-    resetProjectForm();
-    await loadProjects();
   }
 
   async function deleteProject(projectId: string) {
-    if (!window.confirm("이 프로젝트를 삭제할까요?")) {
-      return;
-    }
+    try {
+      if (!window.confirm("이 프로젝트를 삭제할까요?")) {
+        return;
+      }
 
-    const response = await fetch(`${API_BASE}/api/projects/${projectId}`, { method: "DELETE" });
-    if (!response.ok) {
-      showToast("프로젝트를 삭제하지 못했습니다.", "projects");
-      return;
-    }
+      const response = await fetch(`${API_BASE}/api/v1/projects/${projectId}`, { method: "DELETE" });
+      if (!response.ok) {
+        showToast("프로젝트를 삭제하지 못했습니다.", "projects");
+        return;
+      }
 
-    if (selectedProjectId === projectId) {
-      setSelectedProjectId("");
+      if (selectedProjectId === projectId) {
+        setSelectedProjectId("");
+      }
+      showToast("프로젝트를 삭제했습니다.", "projects");
+      await loadProjects();
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "요청을 처리하지 못했습니다.", "projects");
     }
-    showToast("프로젝트를 삭제했습니다.", "projects");
-    await loadProjects();
   }
 
   async function createDraft(event: React.FormEvent) {
     event.preventDefault();
-    if (!selectedTemplateId || !transcriptFile || !meetingDatetime || !location || !author) {
+    if (!selectedProjectId || !selectedTemplateId || (!transcriptFile && !storedTranscript) || !meetingDatetime || !location || !author) {
       showToast("양식, 녹취 파일, 회의 일시, 장소, 작성자를 입력하세요.", "compose");
       return;
     }
 
     setIsGenerating(true);
+    setView("compose");
+    window.history.replaceState(null, "", window.location.pathname);
     setGenerationProgress(8);
     setGenerationStepIndex(0);
     setGeneratedMinutes(null);
 
     const payload = {
       template_id: selectedTemplateId,
-      transcript_filename: transcriptFile.name,
+      transcript_filename: transcriptFile?.name || "saved-transcript.txt",
       meeting_datetime: new Date(meetingDatetime).toISOString(),
       location,
       author,
@@ -369,7 +432,9 @@ function App() {
 
     const form = new FormData();
     form.append("payload", JSON.stringify(payload));
-    form.append("transcript", transcriptFile);
+    form.append("transcript", transcriptFile || new File([storedTranscript], "saved-transcript.txt", { type: "text/plain" }));
+    form.append("project_id", selectedProjectId);
+    if (editingMinuteId) form.append("minute_id", editingMinuteId);
 
     try {
       const response = await fetch(`${API_BASE}/api/minutes/generate`, { method: "POST", body: form });
@@ -379,9 +444,13 @@ function App() {
         return;
       }
 
+      const savedId = response.headers.get("x-minute-id");
+      if (savedId) setEditingMinuteId(savedId);
+      const saved = savedId ? await api<SavedMinute>(`/api/v1/meeting-minutes/${savedId}`) : null;
+      await loadMinutes();
       const blob = await response.blob();
       const disposition = response.headers.get("content-disposition") || "";
-      const generatedTitle = response.headers.get("x-generated-title") || (titleMode === "manual" ? manualTitle : "회의록");
+      const generatedTitle = saved?.title || (titleMode === "manual" ? manualTitle : "회의록");
       const previewPath = response.headers.get("x-preview-url") || "";
       const filename =
         response.headers.get("x-generated-filename") ||
@@ -390,8 +459,7 @@ function App() {
       const mimeType = blob.type || inferMimeType(filename);
       const previewBlob = mimeType ? new Blob([blob], { type: mimeType }) : blob;
       const url = URL.createObjectURL(previewBlob);
-      setGenerationProgress(100);
-      setGeneratedMinutes({
+      const result = {
         filename,
         url,
         previewUrl: previewPath ? `${API_BASE}${previewPath}` : "",
@@ -399,10 +467,64 @@ function App() {
         mimeType,
         titleMode,
         title: generatedTitle,
+      };
+
+      setIsGenerating(false);
+      setGenerationProgress(100);
+      setGeneratedMinutes(result);
+      setView("result");
+      window.history.pushState(null, "", "#download");
+      window.requestAnimationFrame(() => {
+        mainRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
       });
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "회의록 생성에 실패했습니다.", "compose");
     } finally {
       setIsGenerating(false);
     }
+  }
+
+  function draftInput() {
+    return { template_id: selectedTemplateId || null, meeting_datetime: meetingDatetime, location, author,
+      meeting_type: meetingType, title_mode: titleMode, manual_title: manualTitle,
+      attendees_by_company: attendees.map(row => ({ company: row.company, attendees: row.attendeesText.split(",").map(name => name.trim()).filter(Boolean) })) };
+  }
+
+  async function saveMinute() {
+    if (!selectedProjectId) { showToast("프로젝트를 먼저 등록하거나 선택하세요."); return; }
+    setIsSaving(true);
+    try {
+      const input = draftInput();
+      const previous = savedMinutes.find(item => item.id === editingMinuteId);
+      const payload = { template_id: selectedTemplateId || null, title: manualTitle.trim() || previous?.title || "회의록",
+        meeting_at: meetingDatetime ? new Date(meetingDatetime).toISOString() : null,
+        attendees: input.attendees_by_company, status: previous?.status || MINUTE_STATUS.DRAFT,
+        content: { ...previous?.content, input, transcript_text: transcriptFile ? await transcriptFile.text() : storedTranscript } };
+      const saved = await api<SavedMinute>(editingMinuteId ? `/api/v1/meeting-minutes/${editingMinuteId}` : `/api/v1/projects/${selectedProjectId}/meeting-minutes`,
+        { method: editingMinuteId ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      setEditingMinuteId(saved.id);
+      await loadMinutes();
+      showToast("회의록을 저장했습니다.");
+    } catch (error) { showToast(error instanceof Error ? error.message : "저장 실패"); }
+    finally { setIsSaving(false); }
+  }
+
+  async function openMinute(id: string) {
+    try {
+      const minute = await api<SavedMinute>(`/api/v1/meeting-minutes/${id}`);
+      const input = minute.content.input || {};
+      setEditingMinuteId(minute.id);
+      setSelectedTemplateId(templates.some(item => item.id === minute.template_id) ? minute.template_id || "" : "");
+      const meetingTime = input.meeting_datetime || minute.meeting_at;
+      const date = meetingTime ? new Date(meetingTime) : null;
+      setMeetingDatetime(date ? `${formatDateInput(date)}T${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}` : "");
+      setLocation(input.location || ""); setAuthor(input.author || "");
+      setMeetingType(input.meeting_type || "in_person"); setTitleMode(input.title_mode || "manual");
+      setManualTitle(input.manual_title || minute.title);
+      setAttendees((input.attendees_by_company || []).map((row: { company: string; attendees: string[] }) => ({ company: row.company, attendeesText: row.attendees.join(", ") })));
+      setTranscriptFile(null); setStoredTranscript(minute.content.transcript_text || "");
+      setView("compose");
+    } catch (error) { showToast(error instanceof Error ? error.message : "조회 실패"); }
   }
 
   function downloadGeneratedMinutes() {
@@ -426,7 +548,7 @@ function App() {
       return;
     }
     if (!canPreviewFile(generatedMinutes)) {
-      showToast("미리보기 파일을 찾지 못했습니다. 다운로드로 확인하세요.", "compose");
+      showToast("미리보기 파일을 찾지 못했습니다. 다운로드로 확인하세요.", "result");
       return;
     }
     window.open(generatedMinutes.url, "_blank", "noopener,noreferrer");
@@ -446,7 +568,7 @@ function App() {
   const pageTitle =
     view === "compose" && isGenerating
       ? "회의록 생성 중"
-      : view === "compose" && generatedMinutes
+      : view === "result"
       ? "회의록 생성 완료"
       : view === "compose"
         ? "회의록 작성"
@@ -477,23 +599,27 @@ function App() {
         </nav>
       </aside>
 
-      <main>
+      <main ref={mainRef}>
         <header className="topbar">
           <div>
             <h1>{pageTitle}</h1>
           </div>
         </header>
 
-        {view === "compose" ? (
+        {view === "result" && generatedMinutes ? (
+          <GenerationResult
+            result={generatedMinutes}
+            onDownload={downloadGeneratedMinutes}
+            onPreview={previewGeneratedMinutes}
+            onBack={() => {
+              setGeneratedMinutes(null);
+              setView("compose");
+              window.history.replaceState(null, "", window.location.pathname);
+            }}
+          />
+        ) : view === "compose" ? (
           isGenerating ? (
             <GenerationLoading progress={generationProgress} step={GENERATION_STEPS[generationStepIndex]} />
-          ) : generatedMinutes ? (
-            <GenerationResult
-              result={generatedMinutes}
-              onDownload={downloadGeneratedMinutes}
-              onPreview={previewGeneratedMinutes}
-              onBack={() => setGeneratedMinutes(null)}
-            />
           ) : (
             <ComposeForm
             templates={templates}
@@ -1583,7 +1709,7 @@ function TemplateManager(props: {
                   <span>{template.original_filename}</span>
                 </div>
                 <div className="card-actions">
-                  <a className="icon-button add-attendee" title="양식 다운로드" href={`${API_BASE}/api/templates/${template.id}/download`}>
+                  <a className="icon-button add-attendee" title="양식 다운로드" href={`${API_BASE}/api/v1/meeting-templates/${template.id}/download`}>
                     <Download size={18} />
                   </a>
                   <button className="danger-button" title="양식 삭제" type="button" onClick={() => props.deleteTemplate(template.id)}>
@@ -1734,7 +1860,7 @@ function TemplateListItem(props: {
         <button className="secondary compact-text-button" type="button" onClick={() => setIsEditing(true)}>
           수정
         </button>
-        <a className="icon-button add-attendee" title="양식 다운로드" href={`${API_BASE}/api/templates/${props.template.id}/download`}>
+        <a className="icon-button add-attendee" title="양식 다운로드" href={`${API_BASE}/api/v1/meeting-templates/${props.template.id}/download`}>
           <Download size={18} />
         </a>
         <button className="danger-button" title="양식 삭제" type="button" onClick={() => props.deleteTemplate(props.template.id)}>
@@ -1783,26 +1909,6 @@ function ProjectManager(props: {
           />
         </label>
 
-        <div className="template-checklist">
-          <strong>프로젝트 양식</strong>
-          {props.templates.length === 0 ? (
-            <p className="empty">등록된 양식이 없습니다.</p>
-          ) : (
-            props.templates.map((template) => (
-              <label className="check-row" key={template.id}>
-                <input
-                  type="checkbox"
-                  checked={props.projectTemplateIds.includes(template.id)}
-                  onChange={() => props.toggleProjectTemplate(template.id)}
-                />
-                <span>
-                  <strong>{template.name}</strong>
-                  <small>{template.original_filename}</small>
-                </span>
-              </label>
-            ))
-          )}
-        </div>
 
         <label>
           회의 장소
@@ -1946,26 +2052,6 @@ function ProjectManager2(props: {
           />
         </label>
 
-        <div className="template-checklist">
-          <strong>프로젝트 양식</strong>
-          {props.templates.length === 0 ? (
-            <p className="empty">등록된 양식이 없습니다.</p>
-          ) : (
-            props.templates.map((template) => (
-              <label className="check-row" key={template.id}>
-                <input
-                  type="checkbox"
-                  checked={props.projectTemplateIds.includes(template.id)}
-                  onChange={() => props.toggleProjectTemplate(template.id)}
-                />
-                <span>
-                  <strong>{template.name}</strong>
-                  <small>{template.original_filename}</small>
-                </span>
-              </label>
-            ))
-          )}
-        </div>
 
         <EditablePresetList
           title="회사"

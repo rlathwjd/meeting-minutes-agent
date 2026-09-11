@@ -19,6 +19,8 @@
 - FastAPI
 - Pydantic
 - Uvicorn
+- SQLAlchemy
+- SQLite
 
 ### Frontend
 
@@ -30,40 +32,40 @@
 
 ### 데이터 저장
 
-- 로컬 JSON 파일
-- 업로드 파일 로컬 저장
+- SQLAlchemy + 로컬 SQLite
+- 기본 DB 파일: `backend/data/meeting_minutes.db`
 
 ## 3. 환경 변수 설정
 
 ```env
+# .env.example을 .env로 복사한 뒤 필요한 값을 채웁니다.
 OPENAI_API_KEY=api_key
+DATABASE_URL=
 ```
 
-LLM 생성 모델은 기본적으로 `gpt-4o-mini`를 사용합니다.
+`DATABASE_URL`을 비워두면 로컬 SQLite DB(`backend/data/meeting_minutes.db`)를 사용합니다.
 
-## 4. 로컬 개발 및 테스트
 
-### 백엔드 실행
+### 백엔드
 
-```bash
+```powershell
 cd backend
 python -m venv .venv
-.venv/Scripts/activate
-python -m pip install -r requirements.txt
-python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+if (!(Test-Path ..\.env)) { Copy-Item ..\.env.example ..\.env }
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-### 프론트엔드 실행
+### 프론트엔드
 
-```bash
+```powershell
 cd frontend
 npm install
 npm run dev
 ```
 
-## 5. 향후 구현 예정
+프론트엔드는 기본으로 `http://127.0.0.1:8000` API 서버에 연결합니다. 다른 주소를 사용할 때는 `frontend/.env.example`을 `frontend/.env`로 복사한 뒤 `VITE_API_BASE_URL`을 수정합니다.
 
-- 사이트 내에서 생성된 회의록 문서 관리(DB 연동)
-- 생성된 회의록 미리보기
-- 사용자 인증 및 권한 관리
-- 배포 환경 구성
+### API 경로
+
+Swagger 문서: `http://127.0.0.1:8000/docs`
