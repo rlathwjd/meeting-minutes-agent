@@ -2,7 +2,7 @@
 from enum import Enum
 from uuid import uuid4
 
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, String, Text, false, func
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, String, Text, Uuid, false, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.types import TypeDecorator
 
@@ -41,7 +41,7 @@ class Base(DeclarativeBase):
 
 
 class Record:
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    id: Mapped[str] = mapped_column(Uuid(as_uuid=False), primary_key=True, default=lambda: str(uuid4()))
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, server_default=func.current_timestamp(), onupdate=utcnow)
     deleted_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)

@@ -32,21 +32,22 @@
 
 ### 데이터 저장
 
-- SQLAlchemy + 로컬 SQLite
-- 기본 DB 파일: `backend/data/meeting_minutes.db`
+- SQLAlchemy
+- 로컬 개발 기본: Docker PostgreSQL
+- 간단 테스트: SQLite
 
 ### 백엔드
 
 ```powershell
 cd backend
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-Copy-Item ..\.env.example ..\.env
-------------------------------------------------
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+Copy-Item .env.local.example .env.local
+DATABASE_URL=database_url
 OPENAI_API_KEY=api_key
-DATABASE_URL=
-------------------------------------------------
-.\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+$env:APP_CONFIG_FILE=".env.local"
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
 
 ### 프론트엔드

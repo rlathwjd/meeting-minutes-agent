@@ -7,7 +7,6 @@ from .database import SessionLocal
 from .db_models import ProjectRecord, TemplateRecord, MinuteRecord
 from .storage import PROJECTS_DB, TEMPLATES_DB, DRAFTS_DB, TRANSCRIPT_DIR
 
-LEGACY_PROJECT_ID = 'legacy-import'
 FILE_FIELDS = ('original_filename', 'stored_filename', 'content_type', 'size')
 PROJECT_FIELDS = ('id', 'name', 'description', 'locations', 'companies', 'attendees')
 
@@ -19,13 +18,6 @@ def read_legacy(path):
 def timestamps(item):
     created = item.get('created_at')
     return {'created_at': datetime.fromisoformat(created), 'updated_at': datetime.fromisoformat(created)} if created else {}
-
-
-def ensure_legacy_project(db):
-    if db.get(ProjectRecord, LEGACY_PROJECT_ID) is None:
-        db.add(ProjectRecord(id=LEGACY_PROJECT_ID, name='기존 양식 및 회의록'))
-        db.flush()
-    return LEGACY_PROJECT_ID
 
 
 def import_projects(db, projects):
@@ -50,7 +42,7 @@ def import_template(db, item, owners):
 def import_templates(db, templates, projects):
     for item in templates:
         owners = [p['id'] for p in projects if item['id'] in p.get('template_ids', [])]
-        import_template(db, item, owners or [ensure_legacy_project(db)])
+        import_template(db, item, owners)
     db.flush()
 
 
@@ -59,10 +51,11 @@ def import_drafts(db, drafts):
         if db.get(MinuteRecord, item['id']) is not None:
             continue
         template = db.get(TemplateRecord, item['template_id']) if item.get('template_id') else None
-        project_id = template.project_id if template else ensure_legacy_project(db)
+        if template is None:
+            continue
         meeting_at = datetime.fromisoformat(item['meeting_datetime']) if item.get('meeting_datetime') else None
-        db.add(MinuteRecord(id=item['id'], project_id=project_id,
-                            template_id=template.id if template else None,
+        db.add(MinuteRecord(id=item['id'], project_id=template.project_id,
+                            template_id=template.id,
                             title=item.get('manual_title') or '회의록', meeting_at=meeting_at,
                             attendees=item.get('attendees_by_company'), content=legacy_content(item), **timestamps(item)))
 

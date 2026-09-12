@@ -12,8 +12,7 @@ from .generator import generate_minutes_file
 from .llm import LLMConfigurationError, LLMGenerationError, generate_minutes_content
 from .models import MinutesDraftCreate
 from .database import init_db
-from .migration import migrate_legacy
-from .router import router, DB
+from .api.v1.router import DB, router
 from .db_models import TemplateRecord, MinuteRecord, MinuteStatus
 from .schemas import MinuteCreate, MinutePatch
 from .service import Service
@@ -56,7 +55,6 @@ def build_safe_doc_filename(title: str) -> str:
 def on_startup() -> None:
     ensure_storage()
     init_db()
-    migrate_legacy()
 
 
 @app.get("/health")

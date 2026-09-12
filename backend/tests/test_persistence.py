@@ -1,5 +1,7 @@
 ﻿from pathlib import Path
 
+import importlib
+
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -8,7 +10,7 @@ from sqlalchemy.orm import sessionmaker
 
 from backend.app import database, migration
 from backend.app.db_models import Base, ProjectRecord, TemplateRecord, MinuteRecord
-from backend.app.router import router
+from backend.app.api.v1.router import router
 
 
 @pytest.fixture
@@ -68,6 +70,19 @@ def test_crud_snapshot_and_disk_persistence(setup):
     restarted.dispose()
     with TestClient(client.app) as refreshed:
         assert refreshed.get(f"/api/v1/projects/{p['id']}/meeting-minutes").json()[0]['title'] == '수정'
+
+
+def test_create_project_persists_to_database(setup):
+    client, factory, _ = setup
+    response = client.post('/api/v1/projects', json={'name': 'DB 적재 확인', 'description': 'insert test'})
+    assert response.status_code == 201, response.text
+    created = response.json()
+    with factory() as db:
+        record = db.get(ProjectRecord, created['id'])
+        assert record is not None
+        assert record.name == 'DB 적재 확인'
+        assert record.description == 'insert test'
+        assert record.deleted_at is None
 
 
 def test_soft_delete_parent_and_template(setup):
@@ -130,24 +145,44 @@ def test_patch_rejects_null_required(setup, resource, field):
 def test_legacy_import_is_idempotent(setup, tmp_path, monkeypatch):
     import json
     client, factory, _ = setup
-    records = {'PROJECTS_DB': [{'id': 'p1', 'name': 'Old', 'template_ids': ['t1']}, {'id': 'p2', 'name': 'Other', 'template_ids': ['t1']}],
-               'TEMPLATES_DB': [{'id': 't1', 'name': 'Old template', 'original_filename': 'a.doc', 'stored_filename': 't.doc', 'size': 1, 'content_type': 'application/msword'}],
-               'DRAFTS_DB': [{'id': 'm1', 'template_id': 't1', 'manual_title': 'Old minute'}]}
+    p1 = '11111111-1111-4111-8111-111111111111'
+    p2 = '22222222-2222-4222-8222-222222222222'
+    t1 = '33333333-3333-4333-8333-333333333333'
+    m1 = '44444444-4444-4444-8444-444444444444'
+    records = {'PROJECTS_DB': [{'id': p1, 'name': 'Old', 'template_ids': [t1]}, {'id': p2, 'name': 'Other', 'template_ids': [t1]}],
+               'TEMPLATES_DB': [{'id': t1, 'name': 'Old template', 'original_filename': 'a.doc', 'stored_filename': 't.doc', 'size': 1, 'content_type': 'application/msword'}],
+               'DRAFTS_DB': [{'id': m1, 'template_id': t1, 'manual_title': 'Old minute'}]}
     for key, rows in records.items():
         path = tmp_path / key
         path.write_text(json.dumps(rows), encoding='utf-8')
         monkeypatch.setattr(migration, key, path)
     migration.migrate_legacy()
-    client.delete('/api/v1/projects/p1')
+    client.delete(f'/api/v1/projects/{p1}')
     migration.migrate_legacy()
     with factory() as db:
         assert len(list(db.scalars(select(TemplateRecord)))) == 2
-        assert db.get(ProjectRecord, 'p1').deleted_at is not None
-        assert db.get(MinuteRecord, 'm1').content['input']['manual_title'] == 'Old minute'
+        assert db.get(ProjectRecord, p1).deleted_at is not None
+        assert db.get(MinuteRecord, m1).content['input']['manual_title'] == 'Old minute'
+
+
+def test_legacy_import_skips_orphan_drafts_without_project_fallback(setup, tmp_path, monkeypatch):
+    import json
+    client, factory, _ = setup
+    records = {'PROJECTS_DB': [], 'TEMPLATES_DB': [], 'DRAFTS_DB': [{'id': '44444444-4444-4444-8444-444444444444', 'template_id': '33333333-3333-4333-8333-333333333333', 'manual_title': 'Old minute'}]}
+    for key, rows in records.items():
+        path = tmp_path / key
+        path.write_text(json.dumps(rows), encoding='utf-8')
+        monkeypatch.setattr(migration, key, path)
+    migration.migrate_legacy()
+    assert client.get('/api/v1/projects').json() == []
+    with factory() as db:
+        assert list(db.scalars(select(ProjectRecord))) == []
+        assert list(db.scalars(select(MinuteRecord))) == []
 
 
 def test_file_upload_and_generation_snapshot(setup, tmp_path, monkeypatch):
-    from backend.app import main, router as routes
+    from backend.app import main
+    routes = importlib.import_module('backend.app.api.v1.meeting_templates')
     client, factory, _ = setup
     monkeypatch.setattr(routes, 'TEMPLATE_DIR', tmp_path)
     monkeypatch.setattr(main, 'TEMPLATE_DIR', tmp_path)
@@ -166,9 +201,8 @@ def test_file_upload_and_generation_snapshot(setup, tmp_path, monkeypatch):
     monkeypatch.setattr(main, 'convert_doc_to_pdf', write_pdf)
     import json
     payload = {'template_id': t['id'], 'transcript_filename': 'a.txt', 'meeting_datetime': '2026-09-11T12:00:00+09:00', 'location': 'office', 'author': 'writer', 'meeting_type': 'in_person', 'title_mode': 'ai'}
-    # Avoid main startup migration; reuse the isolated DB dependency.
+    # Avoid startup table creation; reuse the isolated DB dependency.
     monkeypatch.setattr(main, 'init_db', lambda: None)
-    monkeypatch.setattr(main, 'migrate_legacy', lambda: None)
     with TestClient(main.app) as generated_client:
         response = generated_client.post('/api/minutes/generate', data={'project_id': p['id'], 'payload': json.dumps(payload)}, files={'transcript': ('a.txt', b'transcript')})
     assert response.status_code == 200, response.text
