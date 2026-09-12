@@ -1,3 +1,3 @@
-from .v1.router import DB, router
+from .v1 import DB, router
 
 __all__ = ["DB", "router"]

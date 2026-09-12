@@ -1,7 +1,7 @@
 import React from "react";
 import { FileText } from "lucide-react";
 
-import { GENERATION_STEPS, MINUTE_STATUS } from "./constants";
+import { GENERATION_STEPS } from "./constants";
 import { api, API_BASE } from "./lib/api";
 import { canPreviewFile, inferMimeType, parseFilenameFromDisposition } from "./lib/files";
 import { formatDateInput } from "./lib/date";
@@ -13,10 +13,8 @@ import { ProjectsPage } from "./pages/ProjectsPage";
 import { TemplatesPage } from "./pages/TemplatesPage";
 
 export function App() {
-  const [savedMinutes, setSavedMinutes] = React.useState<SavedMinute[]>([]);
   const [editingMinuteId, setEditingMinuteId] = React.useState<string | null>(null);
   const [storedTranscript, setStoredTranscript] = React.useState("");
-  const [isSaving, setIsSaving] = React.useState(false);
   const mainRef = React.useRef<HTMLElement | null>(null);
   const [view, setView] = React.useState<View>("compose");
   const [templates, setTemplates] = React.useState<Template[]>([]);
@@ -73,22 +71,14 @@ export function App() {
     setSelectedProjectId(current => data.some(item => item.id === current) ? current : data[0]?.id || "");
   }, []);
 
-  const loadMinutes = React.useCallback(async () => {
-    if (!selectedProjectId) { setSavedMinutes([]); return; }
-    const data = await api<SavedMinute[]>(`/api/v1/projects/${selectedProjectId}/meeting-minutes`);
-    if (activeProjectId.current === selectedProjectId) setSavedMinutes(data);
-  }, [selectedProjectId]);
-
   React.useEffect(() => { loadProjects().catch(error => showToast(error.message)); }, [loadProjects]);
   React.useEffect(() => {
     if (isOpeningMinute.current) {
       isOpeningMinute.current = false;
       loadTemplates().catch(error => showToast(error.message));
-      loadMinutes().catch(error => showToast(error.message));
       return;
     }
     setTemplates([]);
-    setSavedMinutes([]);
     setEditingMinuteId(null);
     setSelectedTemplateId("");
     setTranscriptFile(null);
@@ -100,8 +90,7 @@ export function App() {
     setAttendees([{ company: "", attendeesText: "" }]);
     resetTemplateForm();
     loadTemplates().catch(error => showToast(error.message));
-    loadMinutes().catch(error => showToast(error.message));
-  }, [loadTemplates, loadMinutes]);
+  }, [loadTemplates]);
 
   React.useEffect(() => {
     if (!toast) {
@@ -131,35 +120,6 @@ export function App() {
       }
     };
   }, [generatedMinutes?.url]);
-
-  async function uploadTemplate(event: React.FormEvent) {
-    try {
-      event.preventDefault();
-      if (!templateName || !templateFile) {
-        showToast("양식명과 파일을 입력하세요.", "templates");
-        return;
-      }
-
-      const form = new FormData();
-      form.append("name", templateName);
-      form.append("description", templateDescription);
-      form.append("file", templateFile);
-
-      const response = await fetch(`${API_BASE}/api/v1/projects/${selectedProjectId}/meeting-templates/upload`, { method: "POST", body: form });
-      if (!response.ok) {
-        showToast("양식 업로드에 실패했습니다.", "templates");
-        return;
-      }
-
-      setTemplateName("");
-      setTemplateDescription("");
-      setTemplateFile(null);
-      showToast("양식이 등록되었습니다.", "templates");
-      await loadTemplates();
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : "요청을 처리하지 못했습니다.", "templates");
-    }
-  }
 
   async function saveTemplate(event: React.FormEvent) {
     try {
@@ -391,7 +351,6 @@ export function App() {
       const savedId = response.headers.get("x-minute-id");
       if (savedId) setEditingMinuteId(savedId);
       const saved = savedId ? await api<SavedMinute>(`/api/v1/meeting-minutes/${savedId}`) : null;
-      await loadMinutes();
       const blob = await response.blob();
       const disposition = response.headers.get("content-disposition") || "";
       const generatedTitle = saved?.title || (titleMode === "manual" ? manualTitle : "회의록");
@@ -426,31 +385,6 @@ export function App() {
     } finally {
       setIsGenerating(false);
     }
-  }
-
-  function draftInput() {
-    return { template_id: selectedTemplateId || null, meeting_datetime: meetingDatetime, location, author,
-      meeting_type: meetingType, title_mode: titleMode, manual_title: manualTitle,
-      attendees_by_company: attendees.map(row => ({ company: row.company, attendees: row.attendeesText.split(",").map(name => name.trim()).filter(Boolean) })) };
-  }
-
-  async function saveMinute() {
-    if (!selectedProjectId) { showToast("프로젝트를 먼저 등록하거나 선택하세요."); return; }
-    setIsSaving(true);
-    try {
-      const input = draftInput();
-      const previous = savedMinutes.find(item => item.id === editingMinuteId);
-      const payload = { template_id: selectedTemplateId || null, title: manualTitle.trim() || previous?.title || "회의록",
-        meeting_at: meetingDatetime ? new Date(meetingDatetime).toISOString() : null,
-        attendees: input.attendees_by_company, status: previous?.status || MINUTE_STATUS.DRAFT,
-        content: { ...previous?.content, input, transcript_text: transcriptFile ? await transcriptFile.text() : storedTranscript } };
-      const saved = await api<SavedMinute>(editingMinuteId ? `/api/v1/meeting-minutes/${editingMinuteId}` : `/api/v1/projects/${selectedProjectId}/meeting-minutes`,
-        { method: editingMinuteId ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-      setEditingMinuteId(saved.id);
-      await loadMinutes();
-      showToast("회의록을 저장했습니다.");
-    } catch (error) { showToast(error instanceof Error ? error.message : "저장 실패"); }
-    finally { setIsSaving(false); }
   }
 
   async function openMinute(id: string) {

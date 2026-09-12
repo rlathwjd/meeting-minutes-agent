@@ -5,5 +5,3 @@ export const GENERATION_STEPS = [
   "회의록 양식에 내용을 채우고 있습니다.",
   "Word 파일을 준비하고 있습니다.",
 ] as const;
-
-export const MINUTE_STATUS = { DRAFT: "draft", COMPLETED: "completed" } as const;

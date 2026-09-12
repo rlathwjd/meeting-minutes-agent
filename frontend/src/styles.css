@@ -113,19 +113,6 @@ h3 {
   margin-bottom: 0;
 }
 
-.model-badge {
-  align-self: flex-start;
-  background: #edf7f4;
-  border: 1px solid #c8e4dc;
-  border-radius: 999px;
-  color: #176b5b;
-  flex: 0 0 auto;
-  font-size: 13px;
-  font-weight: 700;
-  padding: 8px 12px;
-  white-space: nowrap;
-}
-
 .toast-message {
   background: #1f2933;
   border-radius: 8px;
@@ -1042,17 +1029,6 @@ legend {
   cursor: grabbing;
 }
 
-.actions {
-  align-items: center;
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-}
-
-.action-badge {
-  align-self: center;
-}
-
 .compose-attendee-panel {
   padding-bottom: 24px;
 }
@@ -1371,156 +1347,6 @@ legend {
   min-width: 0;
 }
 
-.record-card-grid {
-  display: grid;
-  gap: 14px;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 340px));
-  justify-content: start;
-}
-
-.record-card {
-  background: #ffffff;
-  border: 1px solid #dbe3ec;
-  border-radius: 8px;
-  color: #1f2933;
-  cursor: pointer;
-  display: grid;
-  gap: 6px;
-  min-height: 138px;
-  min-width: 0;
-  padding: 16px;
-  text-align: left;
-}
-
-.record-card:hover,
-.record-card.selected {
-  background: #f8fbfd;
-  border-color: #8ec5dd;
-  box-shadow: 0 8px 18px rgba(31, 41, 51, 0.08);
-}
-
-.record-card strong {
-  font-size: 15px;
-  line-height: 1.35;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.record-card p {
-  color: #526173;
-  font-size: 13px;
-  font-weight: 700;
-  margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.record-card span,
-.record-card small {
-  color: #7a8797;
-  font-size: 12px;
-  font-weight: 700;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.record-card-meta {
-  display: flex;
-  gap: 8px;
-  min-width: 0;
-}
-
-.record-card-meta span:last-child {
-  background: #eef6fb;
-  border-radius: 999px;
-  color: #0f5b8f;
-  flex: 0 0 auto;
-  padding: 2px 8px;
-}
-
-.minutes-table-wrap {
-  border: 1px solid #dbe3ec;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.minutes-table {
-  border-collapse: collapse;
-  table-layout: fixed;
-  width: 100%;
-}
-
-.minute-title-col {
-  width: 22%;
-}
-
-.minute-project-col,
-.minute-template-col,
-.minute-attendees-col {
-  width: 14%;
-}
-
-.minute-date-col,
-.minute-created-col,
-.minute-updated-col {
-  width: 11%;
-}
-
-.minute-status-col {
-  width: 7%;
-}
-
-.minutes-table th,
-.minutes-table td {
-  border-bottom: 1px solid #e2e8f0;
-  color: #3c4656;
-  font-size: 13px;
-  line-height: 1.45;
-  padding: 12px;
-  text-align: left;
-  vertical-align: top;
-  word-break: keep-all;
-}
-
-.minutes-table th {
-  background: #f6f9fc;
-  color: #526173;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.minutes-table tbody tr {
-  cursor: pointer;
-}
-
-.minutes-table tbody tr:hover,
-.minutes-table tbody tr.selected {
-  background: #eef6fb;
-}
-
-.minutes-table tbody tr.selected td {
-  color: #0f5b8f;
-  font-weight: 700;
-}
-
-.minutes-table tbody tr:last-child td {
-  border-bottom: 0;
-}
-
-.table-link {
-  background: transparent;
-  border: 0;
-  color: #0f5b8f;
-  cursor: pointer;
-  font-weight: 800;
-  padding: 0;
-  text-align: left;
-  word-break: keep-all;
-}
-
 .minutes-empty {
   border: 1px solid #dbe3ec;
   border-radius: 8px;
@@ -1835,10 +1661,6 @@ legend {
 
   .topbar {
     display: grid;
-  }
-
-  .model-badge {
-    white-space: normal;
   }
 
   .form-grid,

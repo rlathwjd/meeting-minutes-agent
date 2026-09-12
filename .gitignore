@@ -1,7 +1,6 @@
 # Environment variables
 .env
 .env.*
-!.env.example
 
 # Python
 __pycache__/
@@ -17,6 +16,10 @@ htmlcov/
 .venv/
 venv/
 env/
+.python/
+.test-venv/
+.server-venv/
+.browser-tools/
 backend/.venv/
 
 # uv
@@ -35,6 +38,12 @@ frontend/dist/
 backend/*.log
 frontend/*.log
 
+# Local databases
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+
 # Local uploaded/generated data
 backend/data/*.json
 backend/data/templates/*
@@ -48,10 +57,3 @@ backend/data/generated/*
 Thumbs.db
 .vscode/
 .idea/
-
-backend/data/*.db
-backend/data/*.db-*
-
-backend/.python/
-backend/.test-venv/
-backend/.browser-tools/
