@@ -1282,6 +1282,135 @@ legend {
   font-weight: 500;
 }
 
+.minutes-workspace {
+  align-items: start;
+  grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.75fr);
+}
+
+.minutes-list-panel,
+.minute-detail-panel {
+  min-width: 0;
+}
+
+.minutes-table-wrap {
+  border: 1px solid #dbe3ec;
+  border-radius: 8px;
+  overflow-x: auto;
+}
+
+.minutes-table {
+  border-collapse: collapse;
+  min-width: 1040px;
+  width: 100%;
+}
+
+.minutes-table th,
+.minutes-table td {
+  border-bottom: 1px solid #e2e8f0;
+  color: #3c4656;
+  font-size: 13px;
+  padding: 12px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.minutes-table th {
+  background: #f6f9fc;
+  color: #526173;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.minutes-table tbody tr {
+  cursor: pointer;
+}
+
+.minutes-table tbody tr:hover,
+.minutes-table tbody tr.selected {
+  background: #eef6fb;
+}
+
+.minutes-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.table-link {
+  background: transparent;
+  border: 0;
+  color: #0f5b8f;
+  cursor: pointer;
+  font-weight: 800;
+  padding: 0;
+  text-align: left;
+}
+
+.minutes-empty {
+  border: 1px solid #dbe3ec;
+  border-radius: 8px;
+  margin: 0;
+  padding: 16px;
+}
+
+.minute-detail-panel {
+  display: grid;
+  gap: 18px;
+  position: sticky;
+  top: 32px;
+}
+
+.detail-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.detail-item {
+  display: grid;
+  gap: 4px;
+}
+
+.detail-item span,
+.content-block > strong {
+  color: #697386;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.detail-item strong {
+  color: #1f2933;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.content-block {
+  display: grid;
+  gap: 8px;
+}
+
+.content-block pre {
+  background: #f6f9fc;
+  border: 1px solid #dbe3ec;
+  border-radius: 8px;
+  color: #243244;
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 0;
+  max-height: 460px;
+  overflow: auto;
+  padding: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.empty-detail {
+  align-items: center;
+  color: #697386;
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  min-height: 220px;
+  text-align: center;
+}
+
 .template-checklist {
   display: grid;
   gap: 8px;
@@ -1483,9 +1612,14 @@ legend {
 
 @media (max-width: 1180px) {
   .two-column,
+  .minutes-workspace,
   .project-workspace {
     grid-template-columns: 1fr;
     max-width: none;
+  }
+
+  .minute-detail-panel {
+    position: static;
   }
 
   .template-list-panel {

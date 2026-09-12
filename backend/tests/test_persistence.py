@@ -85,6 +85,22 @@ def test_create_project_persists_to_database(setup):
         assert record.deleted_at is None
 
 
+def test_list_all_minutes_includes_project_and_template_names(setup):
+    client, _, _ = setup
+    p = project(client, 'Minutes Project')
+    t = template(client, p['id'])
+    m = minute(client, p['id'], t['id'])
+    response = client.get('/api/v1/meeting-minutes')
+    assert response.status_code == 200, response.text
+    items = response.json()
+    assert items[0]['id'] == m['id']
+    assert items[0]['project_name'] == 'Minutes Project'
+    assert items[0]['template_name'] == 'Template'
+    assert items[0]['deleted_at'] is None
+    client.delete(f"/api/v1/meeting-minutes/{m['id']}")
+    assert client.get('/api/v1/meeting-minutes').json() == []
+
+
 def test_soft_delete_parent_and_template(setup):
     client, factory, _ = setup
     p = project(client)

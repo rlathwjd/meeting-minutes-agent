@@ -2,15 +2,46 @@ from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
+from sqlalchemy import desc, select
 
-from ...db_models import MinuteRecord
-from ...schemas import MinuteCreate, MinutePatch, MinuteResponse
+from ...db_models import MinuteRecord, ProjectRecord, TemplateRecord
+from ...schemas import MinuteCreate, MinuteManagementResponse, MinutePatch, MinuteResponse
 from ...service import Service
 from ...storage import GENERATED_DIR
 from .dependencies import DB
 
 router = APIRouter(tags=["meeting_minutes"])
 DOC_MEDIA_TYPE = "application/msword"
+
+
+def serialize_managed_minute(minute: MinuteRecord, project_name: str, template_name: str | None):
+    return MinuteManagementResponse(
+        id=minute.id,
+        project_id=minute.project_id,
+        template_id=minute.template_id,
+        title=minute.title,
+        meeting_at=minute.meeting_at,
+        attendees=minute.attendees,
+        content=minute.content,
+        status=minute.status,
+        created_at=minute.created_at,
+        updated_at=minute.updated_at,
+        deleted_at=minute.deleted_at,
+        project_name=project_name,
+        template_name=template_name,
+    )
+
+
+@router.get("/meeting-minutes", response_model=list[MinuteManagementResponse])
+def list_all_minutes(db: DB):
+    statement = (
+        select(MinuteRecord, ProjectRecord.name, TemplateRecord.name)
+        .join(ProjectRecord, ProjectRecord.id == MinuteRecord.project_id)
+        .outerjoin(TemplateRecord, TemplateRecord.id == MinuteRecord.template_id)
+        .where(MinuteRecord.deleted_at.is_(None), ProjectRecord.deleted_at.is_(None))
+        .order_by(desc(MinuteRecord.updated_at), desc(MinuteRecord.created_at), MinuteRecord.id)
+    )
+    return [serialize_managed_minute(minute, project_name, template_name) for minute, project_name, template_name in db.execute(statement)]
 
 
 @router.post("/projects/{project_id}/meeting-minutes", response_model=MinuteResponse, status_code=201)

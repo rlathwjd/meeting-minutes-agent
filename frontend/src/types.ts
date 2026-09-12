@@ -1,4 +1,4 @@
-export type View = "compose" | "result" | "templates" | "projects";
+export type View = "compose" | "result" | "templates" | "projects" | "minutes";
 export type MeetingType = "in_person" | "remote";
 export type TitleMode = "ai" | "manual";
 export type Meridiem = "AM" | "PM";
@@ -48,7 +48,12 @@ export type Toast = {
 
 export type SavedMinute = {
   id: string; project_id: string; template_id: string | null; title: string;
-  meeting_at: string | null; status: string;
+  meeting_at: string | null; attendees: unknown[] | null; status: string; created_at: string; updated_at: string;
   content: { input?: Record<string, any>; transcript_text?: string; minutes?: Record<string, unknown>;
     document?: { filename: string; preview_url: string } };
+};
+
+export type ManagedMinute = SavedMinute & {
+  project_name: string;
+  template_name: string | null;
 };

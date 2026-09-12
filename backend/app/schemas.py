@@ -92,3 +92,8 @@ class TemplateResponse(TemplateCreate, RecordResponse):
 
 class MinuteResponse(MinuteCreate, RecordResponse):
     project_id: str
+
+
+class MinuteManagementResponse(MinuteResponse):
+    project_name: str
+    template_name: str | None = None

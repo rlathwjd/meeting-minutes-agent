@@ -8,6 +8,7 @@ import { formatDateInput } from "./lib/date";
 import type { CompanyAttendees, GeneratedMinutes, MeetingType, Project, SavedMinute, Template, TitleMode, Toast, View } from "./types";
 import { ComposePage } from "./pages/ComposePage";
 import { GenerationLoading, ResultPage } from "./pages/ResultPage";
+import { MinutesPage } from "./pages/MinutesPage";
 import { ProjectsPage } from "./pages/ProjectsPage";
 import { TemplatesPage } from "./pages/TemplatesPage";
 
@@ -508,6 +509,8 @@ export function App() {
       ? "회의록 생성 완료"
       : view === "compose"
         ? "회의록 작성"
+        : view === "minutes"
+          ? "회의록 관리"
         : view === "templates"
           ? "회의록 양식 관리"
           : "프로젝트 관리";
@@ -525,6 +528,9 @@ export function App() {
         <nav>
           <button className={view === "compose" ? "active" : ""} onClick={() => setView("compose")}>
             회의록 작성
+          </button>
+          <button className={view === "minutes" ? "active" : ""} onClick={() => setView("minutes")}>
+            회의록 관리
           </button>
           <button className={view === "templates" ? "active" : ""} onClick={() => setView("templates")}>
             회의록 양식 관리
@@ -588,6 +594,8 @@ export function App() {
             createDraft={createDraft}
           />
           )
+        ) : view === "minutes" ? (
+          <MinutesPage />
         ) : view === "templates" ? (
           <TemplatesPage
             templates={templates}

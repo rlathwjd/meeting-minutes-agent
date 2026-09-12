@@ -3,6 +3,7 @@ from enum import Enum
 from uuid import uuid4
 
 from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, String, Text, Uuid, false, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.types import TypeDecorator
 
@@ -15,6 +16,10 @@ class ProjectStatus(str, Enum):
 class MinuteStatus(str, Enum):
     DRAFT = 'draft'
     COMPLETED = 'completed'
+
+
+JSON_TYPE = JSON().with_variant(JSONB, "postgresql")
+NULLABLE_JSON_TYPE = JSON(none_as_null=True).with_variant(JSONB(none_as_null=True), "postgresql")
 
 
 def utcnow():
@@ -53,9 +58,9 @@ class ProjectRecord(Record, Base):
     description: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(30), default=ProjectStatus.ACTIVE.value, server_default=ProjectStatus.ACTIVE.value)
     # Preserve the existing UI's project presets without additional tables.
-    locations: Mapped[list] = mapped_column(JSON, default=list)
-    companies: Mapped[list] = mapped_column(JSON, default=list)
-    attendees: Mapped[list] = mapped_column(JSON, default=list)
+    locations: Mapped[list] = mapped_column(JSON_TYPE, default=list)
+    companies: Mapped[list] = mapped_column(JSON_TYPE, default=list)
+    attendees: Mapped[list] = mapped_column(JSON_TYPE, default=list)
     templates: Mapped[list['TemplateRecord']] = relationship(back_populates='project')
     minutes: Mapped[list['MinuteRecord']] = relationship(back_populates='project')
 
@@ -69,7 +74,7 @@ class TemplateRecord(Record, Base):
     project_id: Mapped[str] = mapped_column(ForeignKey('projects.id'), index=True)
     name: Mapped[str] = mapped_column(String(200))
     description: Mapped[str | None] = mapped_column(Text)
-    template_data: Mapped[dict] = mapped_column(JSON)
+    template_data: Mapped[dict] = mapped_column(JSON_TYPE)
     is_default: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     project: Mapped[ProjectRecord] = relationship(back_populates='templates')
     minutes: Mapped[list['MinuteRecord']] = relationship(back_populates='template')
@@ -81,8 +86,8 @@ class MinuteRecord(Record, Base):
     template_id: Mapped[str | None] = mapped_column(ForeignKey('meeting_templates.id'), index=True)
     title: Mapped[str] = mapped_column(String(200))
     meeting_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
-    attendees: Mapped[list | None] = mapped_column(JSON(none_as_null=True))
-    content: Mapped[dict] = mapped_column(JSON)
+    attendees: Mapped[list | None] = mapped_column(NULLABLE_JSON_TYPE)
+    content: Mapped[dict] = mapped_column(JSON_TYPE)
     status: Mapped[str] = mapped_column(String(30), default=MinuteStatus.DRAFT.value, server_default=MinuteStatus.DRAFT.value)
     project: Mapped[ProjectRecord] = relationship(back_populates='minutes')
     template: Mapped[TemplateRecord | None] = relationship(back_populates='minutes')

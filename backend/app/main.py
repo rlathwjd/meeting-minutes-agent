@@ -6,6 +6,7 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import ValidationError
+from sqlalchemy.orm import Session
 
 from .config import get_llm_settings
 from .generator import generate_minutes_file
@@ -49,6 +50,12 @@ def build_safe_doc_filename(title: str) -> str:
     if not safe_title:
         safe_title = "generated_minutes"
     return f"{safe_title[:80]}.doc"
+
+
+def commit_saved_minute(db: Session, saved: MinuteRecord) -> MinuteRecord:
+    db.commit()
+    db.refresh(saved)
+    return saved
 
 
 @app.on_event("startup")
@@ -143,6 +150,7 @@ async def generate_minutes(
                          'document': {'filename': download_filename, 'stored_filename': output_filename,
                                       'preview_url': f'/api/minutes/generated/{preview_filename}'}})
     saved = service.update(minute_id, MinutePatch(**data)) if minute_id else service.create(MinuteCreate(**data), project_id)
+    saved = commit_saved_minute(db, saved)
 
     return FileResponse(
         output_path,
