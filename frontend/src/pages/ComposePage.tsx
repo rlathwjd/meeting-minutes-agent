@@ -4,7 +4,7 @@ import { GripVertical, Plus, Trash2 } from "lucide-react";
 import type { CompanyAttendees, MeetingType, Project, Template, TitleMode } from "../types";
 import { DateTimePicker } from "../components/DateTimePicker";
 import { FilePicker } from "../components/FilePicker";
-import { ProjectSelect, SimpleSelect, TemplateSelect } from "../components/Selects";
+import { CheckboxSelect, ProjectSelect, SimpleSelect, TemplateSelect } from "../components/Selects";
 
 export function ComposePage(props: {
   templates: Template[];
@@ -131,7 +131,7 @@ export function ComposePage(props: {
         </div>
       </section>
 
-      <section className="panel">
+      <section className="panel compose-attendee-panel">
         <div className="panel-heading">
           <div>
             <h2>참석자</h2>
@@ -217,13 +217,13 @@ export function ComposePage(props: {
                   />
                 )}
                 {props.selectedProject?.attendees.length ? (
-                  <SimpleSelect
+                  <CheckboxSelect
                     placeholder="참석자를 선택하세요"
                     options={props.selectedProject.attendees}
-                    value={row.attendeesText}
-                    disabledOptions={getSelectedAttendeeNames(props.attendees)}
+                    selectedOptions={parseAttendeeNames(row.attendeesText)}
+                    disabledOptions={getSelectedAttendeeNames(props.attendees.filter((_, rowIndex) => rowIndex !== index))}
                     disabledReason="이미 추가되었습니다."
-                    onChange={(value) => appendAttendeeNameToRow(props, index, value)}
+                    onToggle={(value) => toggleAttendeeNameInRow(props, index, value)}
                   />
                 ) : (
                   <input
@@ -248,13 +248,12 @@ export function ComposePage(props: {
           {props.attendeeDropIndex === props.attendees.length && <div className="drop-indicator" />}
         </div>
 
+        <div className="form-actions compose-submit">
+          <button className="primary" type="submit" disabled={props.isGenerating}>
+            {props.isGenerating ? "작성중입니다..." : "시작"}
+          </button>
+        </div>
       </section>
-
-      <div className="actions compose-submit">
-        <button className="primary" type="submit" disabled={props.isGenerating}>
-          {props.isGenerating ? "작성중입니다..." : "시작"}
-        </button>
-      </div>
     </form>
   );
 }
@@ -268,68 +267,30 @@ function updateAttendee(
   props.setAttendees(props.attendees.map((row, rowIndex) => (rowIndex === index ? { ...row, [field]: value } : row)));
 }
 
-function appendAttendeeName(
-  props: { attendees: CompanyAttendees[]; setAttendees: (value: CompanyAttendees[]) => void },
-  name: string,
-) {
-  const nextAttendees = props.attendees.length > 0 ? [...props.attendees] : [{ company: "", attendeesText: "" }];
-  const targetIndex = Math.max(0, nextAttendees.length - 1);
-  const currentNames = nextAttendees[targetIndex].attendeesText
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-
-  if (!currentNames.includes(name)) {
-    currentNames.push(name);
-  }
-
-  nextAttendees[targetIndex] = {
-    ...nextAttendees[targetIndex],
-    attendeesText: currentNames.join(", "),
-  };
-  props.setAttendees(nextAttendees);
-}
-
-function appendAttendeeNameToRow(
+function toggleAttendeeNameInRow(
   props: { attendees: CompanyAttendees[]; setAttendees: (value: CompanyAttendees[]) => void },
   index: number,
   name: string,
 ) {
   const nextAttendees = [...props.attendees];
-  const currentNames = nextAttendees[index].attendeesText
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-
-  if (!currentNames.includes(name)) {
-    currentNames.push(name);
-  }
-
+  const currentNames = parseAttendeeNames(nextAttendees[index].attendeesText);
+  const nextNames = currentNames.includes(name) ? currentNames.filter((item) => item !== name) : [...currentNames, name];
   nextAttendees[index] = {
     ...nextAttendees[index],
-    attendeesText: currentNames.join(", "),
+    attendeesText: nextNames.join(", "),
   };
   props.setAttendees(nextAttendees);
 }
 
 function getSelectedAttendeeNames(attendees: CompanyAttendees[]) {
-  return attendees.flatMap((row) =>
-    row.attendeesText
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean),
-  );
+  return attendees.flatMap((row) => parseAttendeeNames(row.attendeesText));
 }
 
-function parsePresetLines(value: string) {
-  return Array.from(
-    new Set(
-      value
-        .split(/\r?\n|,/)
-        .map((item) => item.trim())
-        .filter(Boolean),
-    ),
-  );
+function parseAttendeeNames(value: string) {
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 function moveAttendee(

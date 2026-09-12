@@ -24,6 +24,7 @@ export function App() {
   const [selectedProjectId, setSelectedProjectId] = React.useState("");
   const activeProjectId = React.useRef(selectedProjectId);
   activeProjectId.current = selectedProjectId;
+  const isOpeningMinute = React.useRef(false);
   const [templateName, setTemplateName] = React.useState("");
   const [templateDescription, setTemplateDescription] = React.useState("");
   const [templateFile, setTemplateFile] = React.useState<File | null>(null);
@@ -80,6 +81,12 @@ export function App() {
 
   React.useEffect(() => { loadProjects().catch(error => showToast(error.message)); }, [loadProjects]);
   React.useEffect(() => {
+    if (isOpeningMinute.current) {
+      isOpeningMinute.current = false;
+      loadTemplates().catch(error => showToast(error.message));
+      loadMinutes().catch(error => showToast(error.message));
+      return;
+    }
     setTemplates([]);
     setSavedMinutes([]);
     setEditingMinuteId(null);
@@ -450,15 +457,17 @@ export function App() {
     try {
       const minute = await api<SavedMinute>(`/api/v1/meeting-minutes/${id}`);
       const input = minute.content.input || {};
+      isOpeningMinute.current = minute.project_id !== selectedProjectId;
+      setSelectedProjectId(minute.project_id);
       setEditingMinuteId(minute.id);
-      setSelectedTemplateId(templates.some(item => item.id === minute.template_id) ? minute.template_id || "" : "");
+      setSelectedTemplateId(minute.template_id || "");
       const meetingTime = input.meeting_datetime || minute.meeting_at;
       const date = meetingTime ? new Date(meetingTime) : null;
       setMeetingDatetime(date ? `${formatDateInput(date)}T${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}` : "");
       setLocation(input.location || ""); setAuthor(input.author || "");
       setMeetingType(input.meeting_type || "in_person"); setTitleMode(input.title_mode || "manual");
       setManualTitle(input.manual_title || minute.title);
-      setAttendees((input.attendees_by_company || []).map((row: { company: string; attendees: string[] }) => ({ company: row.company, attendeesText: row.attendees.join(", ") })));
+      setAttendees(toCompanyAttendees(input.attendees_by_company || minute.attendees));
       setTranscriptFile(null); setStoredTranscript(minute.content.transcript_text || "");
       setView("compose");
     } catch (error) { showToast(error instanceof Error ? error.message : "조회 실패"); }
@@ -493,6 +502,9 @@ export function App() {
 
   const selectedProject = projects.find((project) => project.id === selectedProjectId) || null;
   React.useEffect(() => {
+    if (editingMinuteId && selectedTemplateId) {
+      return;
+    }
     if (templates.length === 0) {
       setSelectedTemplateId("");
       return;
@@ -500,7 +512,7 @@ export function App() {
     if (selectedTemplateId && !templates.some((template) => template.id === selectedTemplateId)) {
       setSelectedTemplateId("");
     }
-  }, [selectedTemplateId, templates]);
+  }, [editingMinuteId, selectedTemplateId, templates]);
 
   const pageTitle =
     view === "compose" && isGenerating
@@ -595,7 +607,7 @@ export function App() {
           />
           )
         ) : view === "minutes" ? (
-          <MinutesPage />
+          <MinutesPage onEditMinute={openMinute} />
         ) : view === "templates" ? (
           <TemplatesPage
             templates={templates}
@@ -644,4 +656,23 @@ export function App() {
       </main>
     </div>
   );
+}
+
+function toCompanyAttendees(value: unknown): CompanyAttendees[] {
+  if (!Array.isArray(value)) {
+    return [{ company: "", attendeesText: "" }];
+  }
+  const attendees = value
+    .map((row) => {
+      if (!row || typeof row !== "object") {
+        return null;
+      }
+      const item = row as { company?: unknown; attendees?: unknown };
+      return {
+        company: typeof item.company === "string" ? item.company : "",
+        attendeesText: Array.isArray(item.attendees) ? item.attendees.map(String).join(", ") : "",
+      };
+    })
+    .filter((row): row is CompanyAttendees => row !== null);
+  return attendees.length ? attendees : [{ company: "", attendeesText: "" }];
 }

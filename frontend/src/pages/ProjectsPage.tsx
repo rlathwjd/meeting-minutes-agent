@@ -63,44 +63,47 @@ export function ProjectsPage(props: {
 
       <form className="panel project-form-panel" onSubmit={props.saveProject}>
         <h2>{props.editingProjectId ? "프로젝트 수정" : "프로젝트 등록"}</h2>
-        <label>
-          프로젝트명
-          <input value={props.projectName} onChange={(event) => props.setProjectName(event.target.value)} placeholder="예: 키움증권 컨시어지" />
-        </label>
-        <label>
-          설명
-          <input
-            value={props.projectDescription}
-            onChange={(event) => props.setProjectDescription(event.target.value)}
-            placeholder="예: 컨시어지 구축 프로젝트"
+        <div className="project-basic-row">
+          <label>
+            프로젝트명
+            <input value={props.projectName} onChange={(event) => props.setProjectName(event.target.value)} placeholder="예: 키움증권 컨시어지" />
+          </label>
+          <label>
+            설명
+            <input
+              value={props.projectDescription}
+              onChange={(event) => props.setProjectDescription(event.target.value)}
+              placeholder="예: 컨시어지 구축 프로젝트"
+            />
+          </label>
+        </div>
+
+        <div className="project-preset-stack">
+          <EditablePresetList
+            title="회사"
+            placeholder="예: 키움증권"
+            items={props.projectCompanies}
+            setItems={props.setProjectCompanies}
+            draft={props.projectCompanyInput}
+            setDraft={props.setProjectCompanyInput}
           />
-        </label>
-
-
-        <EditablePresetList
-          title="회사"
-          placeholder="예: 키움증권"
-          items={props.projectCompanies}
-          setItems={props.setProjectCompanies}
-          draft={props.projectCompanyInput}
-          setDraft={props.setProjectCompanyInput}
-        />
-        <EditablePresetList
-          title="참석자"
-          placeholder="예: OOO 사원"
-          items={props.projectAttendees}
-          setItems={props.setProjectAttendees}
-          draft={props.projectAttendeeInput}
-          setDraft={props.setProjectAttendeeInput}
-        />
-        <EditablePresetList
-          title="회의 장소"
-          placeholder="예: 본사 7층 회의실"
-          items={props.projectLocations}
-          setItems={props.setProjectLocations}
-          draft={props.projectLocationInput}
-          setDraft={props.setProjectLocationInput}
-        />
+          <EditablePresetList
+            title="참석자"
+            placeholder="예: OOO 사원"
+            items={props.projectAttendees}
+            setItems={props.setProjectAttendees}
+            draft={props.projectAttendeeInput}
+            setDraft={props.setProjectAttendeeInput}
+          />
+          <EditablePresetList
+            title="회의 장소"
+            placeholder="예: 본사 7층 회의실"
+            items={props.projectLocations}
+            setItems={props.setProjectLocations}
+            draft={props.projectLocationInput}
+            setDraft={props.setProjectLocationInput}
+          />
+        </div>
 
         <div className="form-actions">
           <button className="primary" type="submit">
@@ -159,8 +162,9 @@ function EditablePresetList(props: {
           <Plus size={18} />
         </button>
       </div>
-      <div className="editable-preset-chip-list">
-        {props.items.map((item, index) => (
+      {props.items.length > 0 && (
+        <div className="editable-preset-chip-list">
+          {props.items.map((item, index) => (
             <div className="editable-preset-chip" key={`${item}-${index}`}>
               <input
                 aria-label={`${props.title} ${index + 1}`}
@@ -179,7 +183,8 @@ function EditablePresetList(props: {
               </button>
             </div>
           ))}
-      </div>
+        </div>
+      )}
     </section>
   );
 }

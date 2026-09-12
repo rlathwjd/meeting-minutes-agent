@@ -33,7 +33,7 @@
 ### 데이터 저장
 
 - SQLAlchemy
-- 로컬 개발 기본: Docker PostgreSQL
+- 로컬 개발 기본: Docker PostgreSQL(Docker Desktop 실행)
 - 간단 테스트: SQLite
 
 ### 백엔드

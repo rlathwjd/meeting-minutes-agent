@@ -1,14 +1,15 @@
 import React from "react";
-import { FileText, RefreshCw } from "lucide-react";
+import { FileText, Trash2 } from "lucide-react";
 
 import { api } from "../lib/api";
 import type { ManagedMinute } from "../types";
 
-export function MinutesPage() {
+export function MinutesPage(props: { onEditMinute: (minuteId: string) => void }) {
   const [minutes, setMinutes] = React.useState<ManagedMinute[]>([]);
-  const [selectedMinute, setSelectedMinute] = React.useState<ManagedMinute | null>(null);
+  const [selectedMinuteId, setSelectedMinuteId] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState("");
+  const selectedMinute = minutes.find((minute) => minute.id === selectedMinuteId) ?? null;
 
   const loadMinutes = React.useCallback(async () => {
     setIsLoading(true);
@@ -16,13 +17,32 @@ export function MinutesPage() {
     try {
       const data = await api<ManagedMinute[]>("/api/v1/meeting-minutes");
       setMinutes(data);
-      setSelectedMinute((current) => data.find((minute) => minute.id === current?.id) ?? data[0] ?? null);
+      setSelectedMinuteId((current) => (current && data.some((minute) => minute.id === current) ? current : null));
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "회의록 목록을 불러오지 못했습니다.");
     } finally {
       setIsLoading(false);
     }
   }, []);
+
+  async function deleteMinute(event: React.MouseEvent, minuteId: string) {
+    event.stopPropagation();
+    if (!window.confirm("회의록을 삭제할까요?")) {
+      return;
+    }
+    try {
+      await api<void>(`/api/v1/meeting-minutes/${minuteId}`, { method: "DELETE" });
+      setSelectedMinuteId((current) => (current === minuteId ? null : current));
+      await loadMinutes();
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "회의록을 삭제하지 못했습니다.");
+    }
+  }
+
+  function editMinute(event: React.MouseEvent, minuteId: string) {
+    event.stopPropagation();
+    props.onEditMinute(minuteId);
+  }
 
   React.useEffect(() => {
     loadMinutes();
@@ -34,12 +54,7 @@ export function MinutesPage() {
         <div className="panel-heading">
           <div>
             <h2>회의록 목록</h2>
-            <p>DB에 저장된 회의록을 최신 수정 순으로 조회합니다.</p>
           </div>
-          <button className="secondary compact-text-button" type="button" onClick={loadMinutes} disabled={isLoading}>
-            <RefreshCw size={16} />
-            새로고침
-          </button>
         </div>
 
         {errorMessage ? <p className="preview-empty">{errorMessage}</p> : null}
@@ -47,43 +62,28 @@ export function MinutesPage() {
         {minutes.length === 0 && !isLoading ? (
           <p className="empty minutes-empty">저장된 회의록이 없습니다.</p>
         ) : (
-          <div className="minutes-table-wrap">
-            <table className="minutes-table">
-              <thead>
-                <tr>
-                  <th>회의록 제목</th>
-                  <th>프로젝트명</th>
-                  <th>회의록 양식명</th>
-                  <th>회의 일시</th>
-                  <th>참석자</th>
-                  <th>상태</th>
-                  <th>작성일</th>
-                  <th>수정일</th>
-                </tr>
-              </thead>
-              <tbody>
-                {minutes.map((minute) => (
-                  <tr
-                    className={selectedMinute?.id === minute.id ? "selected" : ""}
-                    key={minute.id}
-                    onClick={() => setSelectedMinute(minute)}
-                  >
-                    <td>
-                      <button className="table-link" type="button" onClick={() => setSelectedMinute(minute)}>
-                        {minute.title}
-                      </button>
-                    </td>
-                    <td>{minute.project_name}</td>
-                    <td>{minute.template_name || "양식 없음"}</td>
-                    <td>{formatDateTime(minute.meeting_at)}</td>
-                    <td>{formatAttendees(minute.attendees)}</td>
-                    <td>{minute.status}</td>
-                    <td>{formatDateTime(minute.created_at)}</td>
-                    <td>{formatDateTime(minute.updated_at)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="project-list minute-list">
+            {minutes.map((minute) => (
+              <article
+                className={selectedMinuteId === minute.id ? "project-row minute-list-card selected" : "project-row minute-list-card"}
+                key={minute.id}
+                onClick={() => setSelectedMinuteId(minute.id)}
+              >
+                <div>
+                  <strong>{minute.title}</strong>
+                  <p>{minute.project_name}</p>
+                  <span>{formatDateTime(minute.meeting_at)}</span>
+                </div>
+                <div className="card-actions">
+                  <button className="secondary compact-text-button" type="button" onClick={(event) => editMinute(event, minute.id)}>
+                    수정
+                  </button>
+                  <button className="danger-button" title="회의록 삭제" type="button" onClick={(event) => deleteMinute(event, minute.id)}>
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              </article>
+            ))}
           </div>
         )}
       </div>
@@ -92,7 +92,6 @@ export function MinutesPage() {
     </section>
   );
 }
-
 
 function MinuteDetail(props: { minute: ManagedMinute | null }) {
   if (!props.minute) {
@@ -127,7 +126,6 @@ function MinuteDetail(props: { minute: ManagedMinute | null }) {
   );
 }
 
-
 function DetailItem(props: { label: string; value: string }) {
   return (
     <div className="detail-item">
@@ -136,7 +134,6 @@ function DetailItem(props: { label: string; value: string }) {
     </div>
   );
 }
-
 
 function formatDateTime(value: string | null) {
   if (!value) {
@@ -148,7 +145,6 @@ function formatDateTime(value: string | null) {
   }
   return date.toLocaleString("ko-KR", { dateStyle: "short", timeStyle: "short" });
 }
-
 
 function formatAttendees(value: unknown) {
   if (!Array.isArray(value) || value.length === 0) {
